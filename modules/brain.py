@@ -83,12 +83,7 @@ class Brain:
                     self.llm = Llama(
                         model_path=self.model_path,
                         n_ctx=self.context_size,
-                        n_threads=Config.N_THREADS,
-                        n_batch=512,  # Process more tokens at once
-                        n_gpu_layers=0,  # CPU only for now
-                        use_mmap=True,  # Use memory mapping for faster loading
-                        use_mlock=False,  # Don't lock memory to allow swapping
-                        low_vram=True  # Optimize for low memory usage
+                        n_threads=Config.N_THREADS
                     )
             
             console.print("[green]Model initialized successfully![/green]")
