@@ -1,0 +1,93 @@
+{
+    "greetings": [
+        "Hey there! ", 
+        "Hi! ", 
+        "Hello! ",
+        "Hey, nice to see you! ",
+        "Greetings! "
+    ],
+    "interjections": [
+        "Well, ", 
+        "Hmm, ", 
+        "Oh! ", 
+        "Wow! ", 
+        "Ah, ", 
+        "Gosh! ",
+        "Hey, ",
+        "Whoa! "
+    ],
+    "thinking": [
+        "Let me think... ", 
+        "One moment... ", 
+        "Let's see... ",
+        "Thinking about this... ",
+        "I'm considering... "
+    ],
+    "enthusiasm": [
+        "I'm excited to tell you that ", 
+        "I'm thrilled about ", 
+        "It's amazing that ",
+        "You'll love this! ", 
+        "This is really cool: "
+    ],
+    "opinions": [
+        "You know, ", 
+        "I'd say ", 
+        "I think ", 
+        "In my opinion, ",
+        "From what I understand, ",
+        "It seems to me that "
+    ],
+    "interest": [
+        "Interestingly, ", 
+        "Fascinatingly, ", 
+        "Curiously, ",
+        "It's worth noting that ",
+        "Something cool about this is "
+    ],
+    "clarification": [
+        "Actually, ", 
+        "To be clear, ", 
+        "Just to clarify, ",
+        "To put it simply, ",
+        "What this means is "
+    ],
+    "transitions": [
+        "Moving on, ", 
+        "Switching gears, ", 
+        "On another note, ",
+        "By the way, ",
+        "Speaking of which, "
+    ],
+    "surprise": [
+        "Surprisingly, ", 
+        "Believe it or not, ", 
+        "You might not expect this, but ",
+        "Amazingly, ",
+        "It's unexpected, but "
+    ],
+    "follow_ups": [
+        "What do you think about that? ",
+        "Does that make sense to you? ",
+        "What's your take on this? ",
+        "Have you thought about it that way before? ",
+        "What's your experience with this? "
+    ],
+    "goodbyes": [
+        "It was really nice chatting with you! Take care and see you next time! ",
+        "Thanks for the great conversation! Have a wonderful day ahead! ",
+        "I've really enjoyed our chat! Looking forward to talking again soon! ",
+        "It's been a pleasure! Wishing you all the best until next time! ",
+        "Thanks for stopping by! Have a fantastic rest of your day! ",
+        "I've had a great time talking with you! Take care and stay awesome! ",
+        "It was wonderful catching up! Hope to chat again soon! ",
+        "Thanks for the lovely conversation! Have a great one! ",
+        "I've really appreciated our chat! Take care and see you around! ",
+        "It's been great talking with you! Wishing you a wonderful day! ",
+        "Thanks for the nice conversation! Looking forward to our next chat! ",
+        "I've enjoyed our time together! Have a fantastic day ahead! ",
+        "It was lovely chatting with you! Take care and see you soon! ",
+        "Thanks for stopping by to chat! Have an amazing day! ",
+        "I've really enjoyed our conversation! Until next time, take care! "
+    ]
+} 
