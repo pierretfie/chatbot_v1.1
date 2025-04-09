@@ -15,7 +15,7 @@ class Config:
     # Model settings
     CONTEXT_SIZE: int = 2048
     MAX_TOKENS: int = 1024
-    N_THREADS: int = 4
+    N_THREADS: int = 8
     
     # Conversation settings
     MAX_HISTORY: int = 10
