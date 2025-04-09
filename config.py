@@ -5,7 +5,7 @@ from typing import Optional
 @dataclass
 class Config:
     # Model paths
-    TINYLLAMA_PATH: str = os.path.expanduser('~/tinyllama/tinyllama-1.1b-chat-v1.0.Q5_K_M.gguf')
+    TINYLLAMA_PATH: str = os.path.expanduser('~/tinyllama/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf')
     PIPER_DIR: str = os.path.expanduser('~/piper_models/piper')
     PIPER_MODEL_PATH: str = os.path.expanduser('~/piper_models/en_GB-jenny_dioco-medium/en_GB-jenny_dioco-medium.onnx')
     
@@ -13,8 +13,8 @@ class Config:
     SAMPLE_RATE: str = '22050'
     
     # Model settings
-    CONTEXT_SIZE: int = 1024
-    MAX_TOKENS: int = 512
+    CONTEXT_SIZE: int = 512
+    MAX_TOKENS: int = 256
     N_THREADS: int = 8
     
     # Conversation settings
