@@ -84,7 +84,17 @@ class Brain:
                         model_path=self.model_path,
                         n_ctx=self.context_size,
                         n_threads=Config.N_THREADS,
-                        n_gpu_layers=-1
+                        n_gpu_layers=-1,
+                        n_batch=512,  # Process tokens in batches
+                        use_mmap=True,  # Use memory mapping for faster loading
+                        use_mlock=True,  # Lock model in memory to prevent swapping
+                        offload_kqv=True,  # Offload key, query, value matrices to GPU
+                        main_gpu=0,  # Use first GPU
+                        tensor_split=None,  # Let llama.cpp handle tensor splitting
+                        rope_freq_base=10000.0,  # Optimize for speed
+                        rope_freq_scale=1.0,  # Standard scaling
+                        mul_mat_q=True,  # Use quantized matrix multiplication
+                        f16_kv=True  # Use 16-bit key-value cache
                     )
             
             console.print("[green]Model initialized successfully![/green]")
@@ -548,15 +558,21 @@ Response:"""
                 with warnings.catch_warnings():
                     warnings.simplefilter('ignore')
                     response = self.llm(
-                    full_prompt,
-                    max_tokens=adjusted_max_tokens,
-                    stop=["User:", "\n\n"],
-                    echo=False,
-                    temperature=temperature,
-                    top_p=0.9,
-                    frequency_penalty=0.2,
-                    presence_penalty=0.2
-            )
+                        full_prompt,
+                        max_tokens=adjusted_max_tokens,
+                        stop=["User:", "\n\n"],
+                        echo=False,
+                        temperature=0.7,  # Lower temperature for faster, more focused responses
+                        top_p=0.9,
+                        top_k=40,  # Limit token sampling to top 40
+                        frequency_penalty=0.1,  # Reduced penalty for faster generation
+                        presence_penalty=0.1,  # Reduced penalty for faster generation
+                        repeat_penalty=1.1,  # Slightly increased to prevent repetition
+                        tfs_z=1.0,  # Tail free sampling for better quality/speed balance
+                        mirostat_mode=0,  # Disable mirostat for speed
+                        mirostat_tau=5.0,
+                        mirostat_eta=0.1
+                    )
             generation_time = time.time() - start_time
             
             # Extract the response text
