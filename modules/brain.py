@@ -83,7 +83,8 @@ class Brain:
                     self.llm = Llama(
                         model_path=self.model_path,
                         n_ctx=self.context_size,
-                        n_threads=Config.N_THREADS
+                        n_threads=Config.N_THREADS,
+                        n_gpu_layers=-1
                     )
             
             console.print("[green]Model initialized successfully![/green]")
