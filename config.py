@@ -13,8 +13,8 @@ class Config:
     SAMPLE_RATE: str = '22050'
     
     # Model settings
-    CONTEXT_SIZE: int = 2048
-    MAX_TOKENS: int = 1024
+    CONTEXT_SIZE: int = 1024
+    MAX_TOKENS: int = 512
     N_THREADS: int = 8
     
     # Conversation settings
