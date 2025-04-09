@@ -8,3 +8,4 @@ psutil>=5.9.0
 pynvml>=11.5.0
 pyopencl>=2023.1
 llama-cpp-python>=0.2.0 
+siphash24
