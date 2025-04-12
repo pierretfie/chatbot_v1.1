@@ -51,7 +51,7 @@ def safe_wav_to_pcm(wav):
 def synthesize_and_play(text):
     """Synthesize text to speech and play it using the same parameters as audiotest.py"""
     # TTS synthesis
-    wav = tts.tts(text=text)
+    wav = tts.tts(text='hello')
 
     # Convert to PCM safely
     wav_int16 = safe_wav_to_pcm(wav)
