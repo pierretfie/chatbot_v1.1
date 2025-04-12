@@ -1,11 +1,28 @@
-numpy>=1.21.0
-torch>=2.0.0
-transformers>=4.30.0
-sentencepiece>=0.1.99
-accelerate>=0.20.0
-rich>=10.0.0
+# Core dependencies
+llama-cpp-python>=0.2.38
+TTS>=0.22.0
+numpy==1.22.0  # Required for TTS compatibility
+
+# UI/Display dependencies
+rich>=13.0.0
+
+# System monitoring dependencies
 psutil>=5.9.0
-pynvml>=11.5.0
-pyopencl>=2023.1
-llama-cpp-python>=0.2.0 
-siphash24
+pynvml>=11.5.0  # For NVIDIA GPU monitoring
+
+# Audio processing dependencies
+sounddevice>=0.4.6  # Required for audio playback
+soundfile>=0.12.1   # Required for audio file handling
+
+# Optional GPU support
+torch>=2.0.0  # For GPU acceleration if available
+pyopencl>=2023.1.6  # For OpenCL support
+
+# Development dependencies
+pytest>=7.0.0  # For testing
+black>=23.0.0  # For code formatting
+isort>=5.0.0  # For import sorting
+mypy>=0.990  # For type checking
+
+# Note: The numpy version is pinned to 1.22.0 to maintain compatibility with TTS 0.22.0
+# If you need to use a different version of TTS, you may need to adjust the numpy version accordingly

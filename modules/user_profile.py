@@ -14,7 +14,7 @@ from rich.console import Console
 
 # Add project root to Python path
 script_dir = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, script_dir)
+sys.path.insert(0, os.path.dirname(script_dir))  # Updated to handle modules directory
 
 try:
     from modules.user_profile_editor import UserProfileEditor
@@ -105,4 +105,4 @@ def restore_profile(editor, backup_file):
         console.print(f"[red]Error restoring backup: {e}[/red]")
 
 if __name__ == "__main__":
-    main() 
+    main()

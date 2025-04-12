@@ -7,13 +7,15 @@ from rich.panel import Panel
 from rich.markdown import Markdown
 from rich.live import Live
 from rich.table import Table
+from rich.box import SIMPLE
 import random
 import time
 from datetime import datetime
 from modules.brain import Brain
 from modules.resource_manager import ResourceManager
 from modules.gpu_manager import GPUManager
-from config import Config
+from modules.tts_module import synthesize_and_play, tts
+from modules.config import Config
 from rich.text import Text
 
 console = Console()
@@ -24,9 +26,7 @@ class VoiceChatbot:
         self.resource_manager = ResourceManager()
         self.gpu_manager = GPUManager()
         self.brain = Brain()
-        
-        # Setup Piper commands
-        self._setup_piper_commands()
+        self.tts_module = tts
         
         # Verify paths
         self._verify_paths()
@@ -34,9 +34,7 @@ class VoiceChatbot:
     def _verify_paths(self):
         """Verify all required paths exist."""
         paths_to_check = {
-            'TinyLlama model': Config.TINYLLAMA_PATH,
-            'Piper executable': os.path.join(Config.PIPER_DIR, 'piper'),
-            'Piper model': Config.PIPER_MODEL_PATH
+            'TinyLlama model': Config.TINYLLAMA_PATH
         }
         
         for name, path in paths_to_check.items():
@@ -45,57 +43,13 @@ class VoiceChatbot:
                 console.print(f"[red]{error_msg}[/red]")
                 raise FileNotFoundError(f"{name} not found at: {path}")
                 
-    def _setup_piper_commands(self):
-        """Setup Piper and aplay commands."""
-        self.piper_cmd = [
-            os.path.join(Config.PIPER_DIR, 'piper'),
-            '--model', Config.PIPER_MODEL_PATH,
-            '--output-raw'
-        ]
-        
-        self.aplay_cmd = [
-            'aplay',
-            '-r', Config.SAMPLE_RATE,
-            '-f', 'S16_LE',
-            '-t', 'raw',
-            '-'
-        ]
+
         
     def speak(self, text: str):
-        """Convert text to speech using Piper."""
+        """Convert text to speech using TTS module."""
         try:
-            # Start Piper process
-            piper_process = subprocess.Popen(
-                self.piper_cmd,
-                stdin=subprocess.PIPE,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE
-            )
-            
-            # Start aplay process
-            aplay_process = subprocess.Popen(
-                self.aplay_cmd,
-                stdin=piper_process.stdout,
-                stderr=subprocess.PIPE
-            )
-            
-            # Close Piper's stdout to prevent SIGPIPE
-            piper_process.stdout.close()
-            
-            # Send text to Piper and close stdin
-            _, piper_stderr = piper_process.communicate(input=text.encode('utf-8'))
-            
-            # Wait for aplay to finish
-            aplay_stdout, aplay_stderr = aplay_process.communicate()
-            
-            # Check for errors
-            if piper_process.returncode != 0:
-                error_msg = piper_stderr.decode('utf-8', errors='ignore')
-                console.print(f"[red]Piper error: {error_msg}[/red]")
-            if aplay_process.returncode != 0:
-                error_msg = aplay_stderr.decode('utf-8', errors='ignore')
-                console.print(f"[red]aplay error: {error_msg}[/red]")
-                
+            console.print(f"[dim]Synthesizing audio...[/dim]")
+            synthesize_and_play(text)
         except Exception as e:
             console.print(f"[red]Error in text-to-speech: {str(e)}[/red]")
             
@@ -150,9 +104,10 @@ class VoiceChatbot:
         
     def get_resource_table(self) -> Table:
         """Create a table showing current resource usage."""
-        table = Table(title="System Resources")
-        table.add_column("Metric", style="cyan")
-        table.add_column("Value", style="green")
+        # dim the table box lines
+        table = Table(box=SIMPLE)
+        table.add_column(f"[dim]Metric[/dim]", style="cyan")
+        table.add_column(f"[dim]Value[/dim]", style="green")
         
         # Get resource metrics
         cpu_percent = self.resource_manager.get_cpu_usage()
@@ -164,14 +119,14 @@ class VoiceChatbot:
         gpu_memory = self.gpu_manager.get_gpu_memory_usage()
         
         # Add rows
-        table.add_row("Target CPU Cores", f"{target_cores}")
-        table.add_row("CPU Usage", f"{cpu_percent:.1f}%")
-        table.add_row("Memory Usage", f"{memory_percent:.1f}%")
+        table.add_row(f"[dim]Target CPU Cores[/dim]", f"[dim]{target_cores}[/dim]")
+        table.add_row(f"[dim]CPU Usage[/dim]", f"[dim]{cpu_percent:.1f}%[/dim]")
+        table.add_row(f"[dim]Memory Usage[/dim]", f"[dim]{memory_percent:.1f}%[/dim]")
         
         # Add GPU rows if GPU is available
         if gpu_percent > 0 or gpu_memory > 0:
-            table.add_row("GPU Usage", f"{gpu_percent:.1f}%")
-            table.add_row("GPU Memory", f"{gpu_memory:.1f}%")
+            table.add_row(f"[dim]GPU Usage[/dim]", f"[dim]{gpu_percent:.1f}%[/dim]")
+            table.add_row(f"[dim]GPU Memory[/dim]", f"[dim]{gpu_memory:.1f}%[/dim]")
         
         return table
         
@@ -179,15 +134,16 @@ class VoiceChatbot:
         """Main chatbot loop."""
         # Show initial resource status
         resource_table = self.get_resource_table()
-        console.print(Panel(resource_table, title="System Status"))
+        console.print(Panel.fit(resource_table, title="System Status"))
         
         # Get personalized greeting
         greeting = self.brain.get_greeting()
         
         # Show welcome message with personalized greeting
         console.print(Panel.fit(
-            f"[bold blue]TinyLlama Voice Chatbot[/bold blue]\n\n"
-            "Type 'exit' to quit, 'clear' to clear history",
+            #add a unique emoji to the title
+            f"[bold red]Rena Chatbot[/bold red] 🤖\n\n"
+            "[dim]Type 'exit' to quit, 'clear' to clear history[/dim]",
             title="Welcome"
         ))
         
@@ -221,43 +177,15 @@ class VoiceChatbot:
                                min(char_delay, Config.MAX_TYPING_DELAY))
                 
                 # Start typing animation first
-                console.print(f'[dim]⏱️ {generation_time:.1f}s')
+                console.print(f'[dim] {generation_time:.1f}s')
                 console.print("\n[bold blue]Rena:[/bold blue] ", end="")
                 for char in response:
                     print(char, end="", flush=True)
                     time.sleep(char_delay)
                 print("\n")
                 
-                # Start speech generation after typing is complete
-                piper_process = subprocess.Popen(
-                    self.piper_cmd,
-                    stdin=subprocess.PIPE,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE
-                )
-                
-                aplay_process = subprocess.Popen(
-                    self.aplay_cmd,
-                    stdin=piper_process.stdout,
-                    stderr=subprocess.PIPE
-                )
-                
-                # Close Piper's stdout to prevent SIGPIPE
-                piper_process.stdout.close()
-                
-                # Send text to Piper and close stdin
-                _, piper_stderr = piper_process.communicate(input=response.encode('utf-8'))
-                
-                # Wait for aplay to finish
-                aplay_stdout, aplay_stderr = aplay_process.communicate()
-                
-                # Check for errors
-                if piper_process.returncode != 0:
-                    error_msg = piper_stderr.decode('utf-8', errors='ignore')
-                    console.print(f"[red]Piper error: {error_msg}[/red]")
-                if aplay_process.returncode != 0:
-                    error_msg = aplay_stderr.decode('utf-8', errors='ignore')
-                    console.print(f"[red]aplay error: {error_msg}[/red]")
+                # Use TTS module for speech generation
+                self.tts_module.speak(response)
                 
             except KeyboardInterrupt:
                 console.print("\n[yellow]Interrupted by user. Exiting...[/yellow]")

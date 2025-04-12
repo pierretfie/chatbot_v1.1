@@ -1,9 +1,0 @@
-2025-04-05 17:40:22,124 - VoiceChatbot - INFO - Starting VoiceChatbot
-2025-04-05 17:40:22,125 - Brain - INFO - Initializing TinyLlama model...
-2025-04-05 17:40:25,217 - Brain - INFO - Model initialized successfully
-2025-04-05 17:48:02,537 - VoiceChatbot - INFO - Interrupted by user
-2025-04-05 17:48:02,538 - VoiceChatbot - INFO - Starting cleanup
-2025-04-05 17:48:02,538 - Brain - INFO - Clearing conversation history
-2025-04-05 17:48:02,539 - VoiceChatbot - INFO - Cleanup completed
-2025-04-05 17:48:02,539 - VoiceChatbot - INFO - VoiceChatbot terminated
-2025-04-05 17:48:02,540 - Brain - INFO - Cleaning up model resources

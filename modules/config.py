@@ -6,8 +6,6 @@ from typing import Optional
 class Config:
     # Model paths
     TINYLLAMA_PATH: str = os.path.expanduser('~/tinyllama/tinyllama-1.1b-chat-v1.0.Q5_K_M.gguf')
-    PIPER_DIR: str = os.path.expanduser('~/piper_models/piper')
-    PIPER_MODEL_PATH: str = os.path.expanduser('~/piper_models/en_GB-jenny_dioco-medium/en_GB-jenny_dioco-medium.onnx')
     
     # Audio settings
     SAMPLE_RATE: str = '22050'
@@ -35,4 +33,4 @@ class Config:
         'resource_error': "I'm currently experiencing high resource usage. Please try again in a moment.",
         'file_not_found': "Required file not found: {path}",
         'initialization_error': "Failed to initialize: {error}"
-    } 
+    }

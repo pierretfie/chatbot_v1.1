@@ -3,7 +3,7 @@ import time
 from typing import Dict, Optional
 from rich.console import Console
 import os
-from config import Config
+from modules.config import Config
 
 console = Console()
 

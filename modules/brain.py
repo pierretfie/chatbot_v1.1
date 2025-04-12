@@ -22,7 +22,7 @@ try:
     PROFILE_EDITOR_AVAILABLE = True
 except ImportError:
     PROFILE_EDITOR_AVAILABLE = False
-from config import Config
+from modules.config import Config
 
 console = Console()
 
@@ -74,7 +74,7 @@ class Brain:
         """Initialize the TinyLlama model."""
         try:
             os.environ['LLAMA_CPP_LOG_LEVEL'] = '-1'
-            console.print("[blue]Initializing TinyLlama model...[/blue]")
+            console.print("[dim][blue]Initializing TinyLlama model...[/blue][/dim]")
             
             # Suppress warnings during model initialization
             with self.suppress_stderr():
@@ -97,7 +97,7 @@ class Brain:
                         f16_kv=True  # Use 16-bit key-value cache
                     )
             
-            console.print("[green]Model initialized successfully![/green]")
+            console.print("[dim][green]Model initialized successfully![/green][/dim]")
         except Exception as e:
             error_msg = Config.ERROR_MESSAGES['initialization_error'].format(error=str(e))
             console.print(f"[red]{error_msg}[/red]")
