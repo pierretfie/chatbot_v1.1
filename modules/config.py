@@ -6,21 +6,19 @@ from typing import Optional
 class Config:
     # Model paths
     TINYLLAMA_PATH: str = os.path.expanduser('~/tinyllama/tinyllama-1.1b-chat-v1.0.Q5_K_M.gguf')
-    
+    #TINYLLAMA_PATH: str = os.path.expanduser('~/Nikita_Agent_model/gemma-7b-it-Q4_K_M.gguf')
+
     # Audio settings
     SAMPLE_RATE: str = '22050'
     
     # Model settings
     CONTEXT_SIZE: int = 1024
-    MAX_TOKENS: int = 512
+    MAX_TOKENS: int = 1024
     N_THREADS: int = 8
     
     # Conversation settings
     MAX_HISTORY: int = 10
     
-    # Typing animation settings
-    MIN_TYPING_DELAY: float = 0.01
-    MAX_TYPING_DELAY: float = 0.03
     
     # Resource thresholds
     MEMORY_THRESHOLD: float = 80.0  # percentage

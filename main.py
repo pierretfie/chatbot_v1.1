@@ -1,6 +1,30 @@
 import os
 import subprocess
 import shlex
+import contextlib
+import sys
+import time
+from datetime import datetime
+import threading
+
+# Function to temporarily redirect stderr
+@contextlib.contextmanager
+def redirect_stderr():
+    """Temporarily redirect stderr to /dev/null"""
+    stderr_fd = sys.stderr.fileno()
+    with open(os.devnull, 'w') as devnull:
+        # Save a copy of the original stderr
+        stderr_copy = os.dup(stderr_fd)
+        # Replace stderr with /dev/null
+        os.dup2(devnull.fileno(), stderr_fd)
+        try:
+            yield
+        finally:
+            # Restore the original stderr
+            os.dup2(stderr_copy, stderr_fd)
+            os.close(stderr_copy)
+
+# Import rich components
 from rich.console import Console
 from rich.prompt import Prompt
 from rich.panel import Panel
@@ -9,14 +33,16 @@ from rich.live import Live
 from rich.table import Table
 from rich.box import SIMPLE
 import random
-import time
-from datetime import datetime
-from modules.brain import Brain
-from modules.resource_manager import ResourceManager
-from modules.gpu_manager import GPUManager
-from modules.tts_module import synthesize_and_play, tts
-from modules.config import Config
 from rich.text import Text
+from rich.status import Status
+
+# Import modules with stderr redirected to suppress NNPACK warnings
+with redirect_stderr():
+    from modules.brain import Brain
+    from modules.resource_manager import ResourceManager
+    from modules.gpu_manager import GPUManager
+    from modules.tts_module import synthesize_to_temp_file, play_audio_file
+    from modules.config import Config
 
 console = Console()
 
@@ -26,7 +52,7 @@ class VoiceChatbot:
         self.resource_manager = ResourceManager()
         self.gpu_manager = GPUManager()
         self.brain = Brain()
-        self.tts_module = tts
+        self.tts_module = synthesize_to_temp_file
         
         # Verify paths
         self._verify_paths()
@@ -45,14 +71,6 @@ class VoiceChatbot:
                 
 
         
-    def speak(self, text: str):
-        """Convert text to speech using TTS module."""
-        try:
-            console.print(f"[dim]Synthesizing audio...[/dim]")
-            synthesize_and_play(text)
-        except Exception as e:
-            console.print(f"[red]Error in text-to-speech: {str(e)}[/red]")
-            
     def process_input(self, user_input: str) -> str:
         """Process user input and generate response."""
         try:
@@ -80,26 +98,53 @@ class VoiceChatbot:
                     # Start response generation in a separate thread
                     response_result = [None]
                     generation_time = [0]
-                    
+                    error_result = [None]  # Variable to store errors from the thread
+
                     def generate_response_thread():
-                        response_result[0], generation_time[0] = self.brain.generate_response(user_input)
-                    
+                        try:
+                            response_result[0], generation_time[0] = self.brain.generate_response(user_input)
+                        except Exception as e:
+                            error_result[0] = e # Store the exception
+
                     gen_thread = threading.Thread(target=generate_response_thread)
                     gen_thread.start()
-                    
+
                     # Update the display while waiting for response
                     while gen_thread.is_alive():
                         live.update(get_timer_display())
                         time.sleep(0.01)  # Update every 10ms
                     
-                    # Update final display
+                    gen_thread.join() # Ensure thread finishes before checking results
+
+                    # Check if an error occurred in the thread
+                    if error_result[0] is not None:
+                        # console.print(f"[red]Error in generation thread: {error_result[0]}[/red]") # Debug print commented out
+                        # Optionally, print the full traceback for more detail
+                        # import traceback
+                        # console.print(f"[red]{traceback.format_exc()}[/red]")
+                        return Config.ERROR_MESSAGES['model_error'], 0
+
+                    # Update final display if no error
                     live.update(Text(f"Generation completed in {generation_time[0]:.1f}s", style="dim"))
-                    
+
+                    # Check if response generation was successful but returned None (unexpected)
+                    if response_result[0] is None:
+                        # console.print("[red]Error: Response generation finished but result is None.[/red]") # Debug print commented out
+                        return Config.ERROR_MESSAGES['model_error'], 0
+
                     return response_result[0], generation_time[0]
-                except Exception as e:
-                    raise e
-                    
-        except Exception as e:
+
+                except Exception as e: # Catch errors starting/managing the thread
+                    # Removed the print here as it's less likely and covered above/below
+                    raise e # Re-raise for the outer handler
+
+        except Exception as e: # Catch errors from resource checks or re-raised exceptions
+            # Print the specific error for debugging if it wasn't caught above
+            # This is now mainly for errors *outside* the generation thread logic
+            if error_result[0] is None: # Avoid double printing if thread error was already handled
+                # console.print(f"[red]Error during process_input setup or resource check: {e}[/red]") # Debug print commented out
+                pass # No need to print here, just return the error message
+            # Ensure we still return the generic error message
             return Config.ERROR_MESSAGES['model_error'], 0
         
     def get_resource_table(self) -> Table:
@@ -162,36 +207,53 @@ class VoiceChatbot:
                     
                 # Process input and get response
                 response, generation_time = self.process_input(user_input)
-                
-                # Calculate typing delay based on response length
-                # Average speaking rate is about 150 words per minute
-                # Average word length is about 5 characters
-                words = len(response.split())
-                estimated_speech_duration = (words / 150) * 60  # in seconds
-                
-                # Calculate delay per character to match speech duration
-                char_delay = estimated_speech_duration / len(response)
-                
-                # Ensure delay is within reasonable bounds
-                char_delay = max(Config.MIN_TYPING_DELAY, 
-                               min(char_delay, Config.MAX_TYPING_DELAY))
-                
-                # Start typing animation first
-                console.print(f'[dim] {generation_time:.1f}s')
+
+                # --- Audio Synthesis and Playback Start ---
+                audio_file_path = None
+                audio_thread = None
+                try:
+                    # Show spinner while synthesizing (no text)
+                    with console.status("", spinner="dots") as status:
+                        audio_file_path = self.tts_module(response)
+                    
+                    # Synthesis finished (spinner stops automatically)
+                    
+                        if audio_file_path:
+                            # Start audio playback in a separate thread
+                            audio_thread = threading.Thread(target=play_audio_file, args=(audio_file_path,))
+                            audio_thread.start()
+                        else:
+                            console.print("[yellow]Skipping audio playback due to synthesis error.[/yellow]")
+                except Exception as e:
+                    console.print(f"[red]Error during TTS synthesis or playback initiation: {str(e)}[/red]")
+                # --- Audio Synthesis and Playback End ---
+
+                # --- Text Animation Start ---
+                # Use a fixed, natural typing speed instead of calculating based on total duration
+                # Adjust this value (seconds per character) for desired speed
+                typing_char_delay = 0.07 # Example: 30 milliseconds per character
+
                 console.print("\n[bold blue]Rena:[/bold blue] ", end="")
                 for char in response:
                     print(char, end="", flush=True)
-                    time.sleep(char_delay)
+                    time.sleep(typing_char_delay) # Use the fixed delay
                 print("\n")
-                
-                # Use TTS module for speech generation
-                self.tts_module.speak(response)
-                
+                #add timer emoji 
+                console.print(f'[dim]🕒 {generation_time:.1f}s[/dim]'.ljust(25)) # Pad to overwrite "Synthesizing..."
+
+                # --- Text Animation End ---
+
+                # Note: We don't explicitly join the audio_thread here.
+                # This allows the loop to continue to the next prompt even if audio is finishing.
+                # The play_audio_file function handles cleanup in the thread.
+
             except KeyboardInterrupt:
                 console.print("\n[yellow]Interrupted by user. Exiting...[/yellow]")
                 break
             except Exception as e:
                 console.print(f"[red]Error: {str(e)}[/red]")
+                # If an error occurred, ensure any potentially orphaned audio thread is handled
+                # (though in this simple case, letting it finish or error out is usually okay)
                 continue
                 
     def cleanup(self):

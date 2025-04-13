@@ -485,6 +485,9 @@ Response:"""
     def generate_response(self, user_input: str, max_tokens: int = Config.MAX_TOKENS) -> tuple:
         """Generate a response to user input."""
         try:
+            # Update interaction time at the beginning of processing
+            self.user_manager.update_last_interaction()
+
             # Validate input
             if not user_input or not user_input.strip():
                 return "I notice you sent an empty message. I'm here to chat - feel free to share your thoughts!", 0
@@ -500,19 +503,16 @@ Response:"""
             # Check for goodbye messages
             goodbye_response = self._check_for_goodbye(user_input)
             if goodbye_response:
-                self.user_manager.update_last_interaction()
                 return goodbye_response, 0
                 
             # First, check for user management commands
             command_response = self._check_for_user_commands(user_input)
             if command_response:
-                self.user_manager.update_last_interaction()
                 return command_response, 0
             
             # Check if this is a greeting and provide time since last conversation
             greeting_response = self._check_for_greeting(user_input)
             if greeting_response:
-                self.user_manager.update_last_interaction()
                 return greeting_response, 0
                 
             # Check for birthday reminder
@@ -578,6 +578,31 @@ Response:"""
             # Extract the response text
             response_text = response['choices'][0]['text'].strip()
             
+            # --- Replace parenthetical emotions with emojis ---
+            emotion_to_emoji = {
+                "smiling": "😊",
+                "laughing": "😄",
+                "winking": "😉",
+                "sad": "😢",
+                "crying": "😭",
+                "surprised": "😮",
+                "thinking": "🤔",
+                "confused": "😕",
+                "angry": "😠",
+                # Add more mappings as needed
+            }
+
+            def replace_emotion(match):
+                emotion = match.group(1).lower()
+                # Return emoji or empty string if no match, effectively removing the text
+                return emotion_to_emoji.get(emotion, "") 
+
+            # Pattern: \( + optional whitespace + letters + optional whitespace + \)
+            response_text = re.sub(r'\(\s*([a-zA-Z]+)\s*\)', replace_emotion, response_text)
+            # Remove potential leading/trailing whitespace left after replacement
+            response_text = response_text.strip()
+            # --- End of emoji replacement ---
+
             # Validate response to prevent training data leaks
             response_text = self._validate_response(response_text)
             
@@ -613,8 +638,13 @@ Response:"""
             return response_text, generation_time
             
         except Exception as e:
+            # --- Debugging: Print the specific exception --- 
+            # console.print(f"[bold red]Error in Brain.generate_response:[/bold red]")
+            # import traceback
+            # console.print(f"[red]{traceback.format_exc()}[/red]")
+            # --- End Debugging ---
             error_msg = Config.ERROR_MESSAGES['model_error']
-            console.print(f"[red]{error_msg}[/red]")
+            console.print(f"[red]{error_msg}[/red]") # Keep the original generic message print as well
             return self.prompt_template.get_error_prompt("model_error", str(e)), 0
             
     def _check_for_greeting(self, user_input: str) -> Optional[str]:
@@ -672,18 +702,23 @@ Response:"""
                         time_str += " since we last talked"
                     elif minutes > 0:
                         time_str += f"{minutes} minute{'s' if minutes != 1 else ''} since we last talked"
+                    elif seconds > 5: # Only mention seconds if more than 5 have passed
+                        time_str += f"{seconds} second{'s' if seconds != 1 else ''} since we last talked"
                     else:
-                        # If less than a minute, don't mention time
+                        # If less than 5 seconds, treat as negligible for greeting
                         time_str = ""
                     
                     if time_str:
                         response += f"! It's been {time_str}."
                     else:
-                        response += "!"
-                except:
-                    response += "!"
+                        # If time difference is negligible, provide a slightly different connection
+                        response += "! Good to hear from you again." # Changed this fallback slightly
+
+                except Exception as e: # Catch potential formatting errors
+                    console.print(f"[yellow]Warning: Could not format time difference: {e}[/yellow]")
+                    response += "!" # Fallback if time calculation fails
             else:
-                response += "!"
+                response += "!" # First interaction
             
             # Add a follow-up question or statement
             follow_ups = [
