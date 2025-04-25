@@ -12,4 +12,4 @@ This package contains the core modules for the chatbot application:
 
 # Make key modules available at the package level for easier imports
 from modules.config import Config
-from modules.tts_module import synthesize_to_temp_file, play_audio_file
+from modules.coqui import generate_audio, play_audio_file, init

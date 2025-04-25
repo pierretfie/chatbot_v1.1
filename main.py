@@ -46,14 +46,13 @@ with redirect_stderr():
     from modules.brain import Brain
     from modules.resource_manager import ResourceManager
     from modules.gpu_manager import GPUManager
-    from modules.tts_module import synthesize_to_temp_file, play_audio_file
+    from modules.coqui import generate_audio, play_audio_file, init
     from modules.config import Config
     from modules.personal_info_manager import PersonalInfoManager
     from modules.user_manager import UserManager
     from modules.prompt_template import PromptTemplate
 
 console = Console()
-
 class VoiceChatbot:
     def __init__(self):
         # Initialize components
@@ -65,7 +64,8 @@ class VoiceChatbot:
             sys.exit(1)
         self.llm = self.model_selector.get_llm()
         self.using_gemini = self.model_selector.is_using_gemini()
-        self.tts_module = synthesize_to_temp_file
+        self.coqui = init()
+
         # Verify paths
         self._verify_paths()
         self.user_manager = UserManager()
@@ -236,7 +236,7 @@ class VoiceChatbot:
         ))
         # Play audio for the opening greeting
         try:
-            audio_path = self.tts_module(brief_greeting)
+            audio_path = generate_audio(brief_greeting)
             play_audio_file(audio_path)
         except Exception as e:
             console.print(f"[yellow]Audio playback failed: {e}[/yellow]")
@@ -262,7 +262,7 @@ class VoiceChatbot:
                 try:
                     # Show spinner while synthesizing (no text)
                     with console.status("", spinner="dots") as status:
-                        audio_file_path = self.tts_module(response)
+                        audio_file_path = generate_audio(response)
                     
                     # Synthesis finished (spinner stops automatically)
                     
