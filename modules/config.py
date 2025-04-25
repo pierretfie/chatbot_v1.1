@@ -5,8 +5,8 @@ from typing import Optional
 @dataclass
 class Config:
     # Model paths
-    #TINYLLAMA_PATH: str = os.path.expanduser('~/tinyllama/tinyllama-1.1b-chat-v1.0.Q5_K_M.gguf')
-    TINYLLAMA_PATH: str = os.path.expanduser('~/Nikita_Agent_model/ggml-nomic-ai-gpt4all-falcon-Q4_1.gguf')
+    TINYLLAMA_PATH: str = os.path.expanduser('~/tinyllama/tinyllama-1.1b-chat-v1.0.Q5_K_M.gguf')
+    #TINYLLAMA_PATH: str = os.path.expanduser('~/Nikita_Agent_model/ggml-nomic-ai-gpt4all-falcon-Q4_1.gguf')
 
     # Audio settings
     SAMPLE_RATE: str = '22050'
