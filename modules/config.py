@@ -17,7 +17,7 @@ class Config:
     N_THREADS: int = 8
     
     # Conversation settings
-    MAX_HISTORY: int = 10
+    MAX_HISTORY: int = 20
     
     
     # Resource thresholds

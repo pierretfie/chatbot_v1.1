@@ -116,8 +116,11 @@ class UserManager:
         try:
             with open(self.log_file, "r") as f:
                 lines = f.readlines()
-                if lines:
-                    last_date_str = lines[-1].strip()
+                if len(lines) > 1:
+                    last_date_str = lines[-2].strip()
+                    last_date = date.fromisoformat(last_date_str)
+                elif lines:
+                    last_date_str = lines[0].strip()
                     last_date = date.fromisoformat(last_date_str)
                 else:
                     last_date = today
@@ -128,8 +131,11 @@ class UserManager:
         try:
             with open(self.time_file, "r") as f:
                 lines = f.readlines()
-                if lines:
-                    last_time_str = lines[-1].strip()
+                if len(lines) > 1:
+                    last_time_str = lines[-2].strip()
+                    last_time = datetime.strptime(last_time_str, "%H:%M:%S").time()
+                elif lines:
+                    last_time_str = lines[0].strip()
                     last_time = datetime.strptime(last_time_str, "%H:%M:%S").time()
                 else:
                     last_time = now
@@ -144,15 +150,14 @@ class UserManager:
         last_seconds = last_time.hour * 3600 + last_time.minute * 60 + last_time.second
         
         if current_seconds < last_seconds:
-            # We've crossed a day boundary
-            current_seconds += 24 * 3600
-        
-        seconds_diff = current_seconds - last_seconds
-        
-        hours = seconds_diff // 3600
-        minutes = (seconds_diff % 3600) // 60
-        seconds = seconds_diff % 60
-        
+            # Borrow one day
+            time_diff = (24 * 3600 - last_seconds) + current_seconds
+            days_since -= 1
+        else:
+            time_diff = current_seconds - last_seconds
+        hours = time_diff // 3600
+        minutes = (time_diff % 3600) // 60
+        seconds = time_diff % 60
         return days_since, hours, minutes, seconds
     
     def get_greeting(self) -> str:

@@ -4,19 +4,24 @@ import sys
 
 def init():
     global client
-    client = Client("jimmyvu/Coqui-Xtts-Demo")
+    hf_token = os.environ.get("HF_TOKEN")
+    if not hf_token:
+        raise RuntimeError("Please set your Hugging Face token in the HF_TOKEN environment variable.")
+    client = Client("jimmyvu/Coqui-Xtts-Demo", hf_token=hf_token)
 
 def generate_audio(text):
+    # Prepend a neutral pause to avoid losing initial words
+    safe_text = f". {text}"
     result = client.predict(
-    input_text=f"Good evening, Doctor Wells.\n\n{text}",
-    speaker_reference_audio=handle_file("/home/eclipse/Desktop/gideon_voice_piper/my_gideon_dataset/wavs/gideon_0001.wav"),
-    enhance_speech=False,
-    temperature=0.3,
-    top_p=0.85,
-    top_k=50,
-    repetition_penalty=9.5,
-    language="Auto",
-    api_name="/generate_speech"
+        input_text=safe_text,
+        speaker_reference_audio=handle_file("/home/eclipse/Desktop/gideon_voice_piper/my_gideon_dataset/wavs/gideon_0001.wav"),
+        enhance_speech=False,
+        temperature=0.3,
+        top_p=0.85,
+        top_k=50,
+        repetition_penalty=9.5,
+        language="Auto",
+        api_name="/generate_speech"
     )
     if result and result[0]:
         audio_path = result[0]

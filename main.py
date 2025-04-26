@@ -6,6 +6,7 @@ import sys
 import time
 from datetime import datetime
 import threading
+import json
 
 # Function to temporarily redirect stderr
 @contextlib.contextmanager
@@ -71,6 +72,10 @@ class VoiceChatbot:
         self.user_manager = UserManager()
         self.personal_info_manager = PersonalInfoManager(self.user_manager)
         
+        self.history = []
+        self.history_file = os.path.expanduser("~/my_AI/conversation_history.json")
+        self.load_history()
+        
     def _verify_paths(self):
         """Verify all required paths exist."""
         paths_to_check = {
@@ -85,7 +90,7 @@ class VoiceChatbot:
                 
 
         
-    def process_input(self, user_input: str) -> str:
+    def process_input(self, user_input: str):
         # --- Personal info extraction and query handling ---
         pi_response = self.personal_info_manager.extract_and_store(user_input)
         if pi_response:
@@ -99,72 +104,84 @@ class VoiceChatbot:
                     return Config.ERROR_MESSAGES['resource_error']
             import threading
             import time
-            start_time = time.time()
-            stop_timer = threading.Event()
-            # === Use PromptTemplate.get_chat_prompt for full prompt construction ===
+            from rich.live import Live
+            from rich.text import Text
+            from modules.prompt_template import PromptTemplate
+
+            # --- MEMORY-AWARE PROMPT CONSTRUCTION ---
+            context_turns = Config.MAX_HISTORY if hasattr(Config, 'MAX_HISTORY') else 10
+            conversation_history = self.get_recent_history(context_turns)
             system_prompt = PromptTemplate.get_system_prompt()
-            history_to_pass = self.get_recent_history()
-            user_info = self.personal_info_manager.user_manager.user_data
-            # Format user_info as a string (e.g., name, birthday, preferences, etc.)
-            user_info_str = ""
-            if user_info:
-                # Only include non-empty fields for brevity
-                for k, v in user_info.items():
-                    if v and k != "notes":
-                        user_info_str += f"{k.capitalize()}: {v}\n"
+            user_info = self.user_manager.user_data.get('name', '')
             prompt = PromptTemplate.get_chat_prompt(
                 system_prompt=system_prompt,
-                conversation_history=history_to_pass,
+                conversation_history=conversation_history,
                 user_input=user_input,
-                user_info=user_info_str.strip()
+                user_info=user_info
             )
-            def get_timer_display():
+
+            response_result = [None]
+            generation_time = [0]
+            error_result = [None]
+
+            def get_timer_display(start_time):
                 elapsed = time.time() - start_time
-                return Text(f"Generating..... {elapsed:.1f}s", style="dim")
-            with Live(get_timer_display(), refresh_per_second=30, transient=True) as live:
+                return Text(f"Generating... {elapsed:.1f}s", style="dim")
+
+            def generate_response_thread():
                 try:
-                    response_result = [None]
-                    generation_time = [0]
-                    error_result = [None]
-                    def generate_response_thread():
-                        try:
-                            t0 = time.time()
-                            response = self.llm(prompt, max_tokens=Config.MAX_TOKENS, temperature=1.0)
-                            response_result[0] = response
-                            t1 = time.time()
-                            generation_time[0] = t1 - t0
-                        except Exception as e:
-                            error_result[0] = e
-                    gen_thread = threading.Thread(target=generate_response_thread)
-                    gen_thread.start()
-                    while gen_thread.is_alive():
-                        live.update(get_timer_display())
-                        time.sleep(0.01)
-                    gen_thread.join()
-                    if error_result[0] is not None:
-                        return Config.ERROR_MESSAGES['model_error'], 0
-                    live.update(Text(f"Generation completed in {generation_time[0]:.1f}s", style="dim"))
-                    if response_result[0] is None:
-                        return Config.ERROR_MESSAGES['model_error'], 0
-                    if isinstance(response_result[0], dict) and 'choices' in response_result[0] and response_result[0]['choices']:
-                        return response_result[0]['choices'][0]['text'], generation_time[0]
-                    elif isinstance(response_result[0], str):
-                        return response_result[0], generation_time[0]
-                    else:
-                        return "[No response]", generation_time[0]
+                    t0 = time.time()
+                    response = self.llm(prompt, max_tokens=Config.MAX_TOKENS, temperature=1.0)
+                    response_result[0] = response
+                    t1 = time.time()
+                    generation_time[0] = t1 - t0
                 except Exception as e:
-                    raise e
+                    error_result[0] = e
+
+            start_time = time.time()
+            with Live(get_timer_display(start_time), refresh_per_second=30, transient=True) as live:
+                thread = threading.Thread(target=generate_response_thread)
+                thread.start()
+                while thread.is_alive():
+                    live.update(get_timer_display(start_time))
+                    time.sleep(0.05)
+                thread.join()
+
+            if error_result[0] is not None:
+                raise error_result[0]
+            if response_result[0] is None:
+                return Config.ERROR_MESSAGES['model_error'], 0
+            if isinstance(response_result[0], dict) and 'choices' in response_result[0] and response_result[0]['choices']:
+                return response_result[0]['choices'][0]['text'], generation_time[0]
+            elif isinstance(response_result[0], str):
+                return response_result[0], generation_time[0]
+            else:
+                return "[No response]", generation_time[0]
         except Exception as e:
             if 'error_result' in locals() and error_result[0] is None:
                 pass
             return Config.ERROR_MESSAGES['model_error'], 0
         
-    def get_recent_history(self, context_turns=6):
-        """Get the last N turns of conversation as a list of dicts with 'role' and 'content'."""
-        # This should be implemented to return the last N turns in the format:
-        # [{'role': 'user', 'content': ...}, {'role': 'assistant', 'content': ...}, ...]
-        # For now, return an empty list (user should implement their own history tracking)
-        return []
+    def get_recent_history(self, context_turns=20):
+        """Return the last N turns of conversation as a list of dicts."""
+        return self.history[-context_turns:]
+
+    def add_to_history(self, role, content):
+        """Add a message to the conversation history."""
+        self.history.append({"role": role, "content": content})
+        self.save_history()  # Save after each addition for persistence
+
+    def save_history(self):
+        os.makedirs(os.path.dirname(self.history_file), exist_ok=True)
+        with open(self.history_file, "w") as f:
+            json.dump(self.history, f, indent=2)
+
+    def load_history(self):
+        if os.path.exists(self.history_file):
+            with open(self.history_file, "r") as f:
+                self.history = json.load(f)
+        else:
+            self.history = []
         
     def get_resource_table(self) -> Table:
         """Create a table showing current resource usage."""
@@ -251,6 +268,8 @@ class VoiceChatbot:
                     break
                 elif user_input.lower() == 'clear':
                     console.print("[yellow]Conversation history cleared.[/yellow]")
+                    self.history = []
+                    self.save_history()
                     continue
                     
                 # Process input and get response
@@ -279,7 +298,7 @@ class VoiceChatbot:
                 # --- Text Animation Start ---
                 # Use a fixed, natural typing speed instead of calculating based on total duration
                 # Adjust this value (seconds per character) for desired speed
-                typing_char_delay = 0.07 # Example: 30 milliseconds per character
+                typing_char_delay = 0.05 # Example: 30 milliseconds per character
 
                 console.print("\n[bold blue]Rena:[/bold blue] ", end="")
                 for char in response:
@@ -294,6 +313,9 @@ class VoiceChatbot:
                 # Note: We don't explicitly join the audio_thread here.
                 # This allows the loop to continue to the next prompt even if audio is finishing.
                 # The play_audio_file function handles cleanup in the thread.
+
+                self.add_to_history("user", user_input)
+                self.add_to_history("assistant", response)
 
             except KeyboardInterrupt:
                 console.print("\n[yellow]Interrupted by user. Exiting...[/yellow]")
